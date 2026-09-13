@@ -10,7 +10,11 @@ export async function apiFetch<T>(
   if (!authToken && typeof window !== 'undefined') {
     const isPortalPath = window.location.pathname.startsWith('/portal');
     if (isPortalPath) {
-      authToken = localStorage.getItem('portal_token') || localStorage.getItem('auth_token') || undefined;
+      authToken =
+        localStorage.getItem('customer_token') ||
+        localStorage.getItem('portal_token') ||
+        localStorage.getItem('auth_token') ||
+        undefined;
     } else {
       authToken = localStorage.getItem('auth_token') || undefined;
     }
@@ -44,6 +48,11 @@ export async function apiFetch<T>(
         localStorage.removeItem('auth_token');
         localStorage.removeItem('user_info');
         window.location.href = '/login';
+      } else if (window.location.pathname.startsWith('/portal/dashboard')) {
+        localStorage.removeItem('customer_token');
+        localStorage.removeItem('portal_token');
+        localStorage.removeItem('customer_info');
+        window.location.href = '/portal';
       }
     }
 

@@ -32,12 +32,18 @@ export default function CustomerDashboardPage() {
   const [paying, setPaying] = useState(false);
   const [paySuccess, setPaySuccess] = useState<any>(null);
 
+  const [payError, setPayError] = useState<string | null>(null);
+
   useEffect(() => {
     loadPortalData();
   }, []);
 
   async function loadPortalData() {
-    const token = localStorage.getItem('customer_token');
+    const token =
+      localStorage.getItem('customer_token') ||
+      localStorage.getItem('portal_token') ||
+      localStorage.getItem('auth_token');
+
     if (!token) {
       router.push('/portal');
       return;
@@ -68,11 +74,16 @@ export default function CustomerDashboardPage() {
 
   async function handleOnlinePayment(e: React.FormEvent) {
     e.preventDefault();
-    const token = localStorage.getItem('customer_token');
+    const token =
+      localStorage.getItem('customer_token') ||
+      localStorage.getItem('portal_token') ||
+      localStorage.getItem('auth_token');
+
     if (!token) return;
 
     try {
       setPaying(true);
+      setPayError(null);
       const res = await apiFetch<any>(
         '/portal/pay/confirm',
         {
@@ -88,9 +99,9 @@ export default function CustomerDashboardPage() {
 
       setPaySuccess(res);
       setShowPayModal(false);
-      loadPortalData();
+      await loadPortalData();
     } catch (err: any) {
-      alert(err.message || 'Payment failed');
+      setPayError(err.message || 'Payment failed');
     } finally {
       setPaying(false);
     }
@@ -98,6 +109,7 @@ export default function CustomerDashboardPage() {
 
   function handleLogout() {
     localStorage.removeItem('customer_token');
+    localStorage.removeItem('portal_token');
     localStorage.removeItem('customer_info');
     router.push('/portal');
   }
@@ -209,6 +221,17 @@ export default function CustomerDashboardPage() {
         {/* Statement Content */}
         {activeTab === 'statement' && (
           <div className="space-y-3">
+            <div className="flex justify-between items-center px-1">
+              <span className="text-xs text-slate-400">Chronological ledger entries</span>
+              <button
+                type="button"
+                onClick={() => window.print()}
+                className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold border border-slate-700 transition-colors"
+              >
+                <FileText className="w-3.5 h-3.5 text-blue-400" /> Print Statement
+              </button>
+            </div>
+
             {statement?.statement?.map((e: any) => (
               <div key={e.id} className="p-4 rounded-2xl bg-slate-800 border border-slate-700 space-y-2">
                 <div className="flex justify-between items-start">
@@ -230,6 +253,11 @@ export default function CustomerDashboardPage() {
                 </div>
               </div>
             ))}
+            {(!statement?.statement || statement.statement.length === 0) && (
+              <div className="p-8 text-center text-slate-500 text-xs bg-slate-800/50 rounded-2xl border border-slate-800">
+                No past ledger entries found for this account.
+              </div>
+            )}
           </div>
         )}
 
@@ -294,6 +322,12 @@ export default function CustomerDashboardPage() {
             <p className="text-xs text-slate-400">
               Pay via UPI Intent, NetBanking, or QR Code. Payments update your ledger immediately.
             </p>
+
+            {payError && (
+              <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-300 text-xs">
+                {payError}
+              </div>
+            )}
 
             <form onSubmit={handleOnlinePayment} className="space-y-4">
               <div>

@@ -25,6 +25,7 @@ export default function CustomerLoginPage() {
 
       if (res.accessToken) {
         localStorage.setItem('customer_token', res.accessToken);
+        localStorage.setItem('portal_token', res.accessToken);
         localStorage.setItem('customer_info', JSON.stringify(res.customer));
         router.push('/portal/dashboard');
       }

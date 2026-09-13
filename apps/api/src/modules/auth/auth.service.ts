@@ -59,18 +59,33 @@ export class AuthService {
   }
 
   async customerLogin(dto: CustomerLoginDto) {
-    // Phone-first Customer Portal login
-    const customer = await this.prisma.customer.findUnique({
-      where: { phone: dto.phone },
+    // Phone-first Customer Portal login with resilient phone normalization
+    const cleanPhone = dto.phone.replace(/[\s\-\(\)]/g, '').trim();
+    const phoneWithPlus = cleanPhone.startsWith('+91')
+      ? cleanPhone
+      : `+91${cleanPhone.replace(/^0+/, '')}`;
+    const rawPhone = cleanPhone.replace(/^\+91/, '').replace(/^0+/, '');
+
+    const customer = await this.prisma.customer.findFirst({
+      where: {
+        OR: [
+          { phone: cleanPhone },
+          { phone: phoneWithPlus },
+          { phone: rawPhone },
+          { phone: { contains: rawPhone } },
+        ],
+      },
       include: { village: true },
     });
 
     if (!customer) {
-      throw new UnauthorizedException('No customer account found with this phone number');
+      throw new UnauthorizedException(
+        `No customer account found with mobile number "${dto.phone}". Please check with your shop owner.`,
+      );
     }
 
     if (!customer.isActive) {
-      throw new UnauthorizedException('Customer account is deactivated');
+      throw new UnauthorizedException('Customer account is deactivated. Please contact shop owner.');
     }
 
     const payload = {

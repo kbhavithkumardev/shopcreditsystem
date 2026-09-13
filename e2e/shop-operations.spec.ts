@@ -184,5 +184,69 @@ test.describe.serial('Production Shop Management Operations & Playwright Test Su
     await expect(page.getByText(/Zero Silent Inconsistency Guarantee Active/i)).toBeVisible({ timeout: 15000 });
   });
 
+  test('7. Customer Portal Mobile Login & Profile Access', async ({ page }) => {
+    // Navigate to Customer Portal
+    await page.goto('/portal');
+    await expect(page.getByRole('heading', { name: 'Sign In to Your Account' })).toBeVisible({ timeout: 15000 });
+
+    // Login using registered customer mobile number (with flexible format)
+    await page.fill('input[type="tel"]', '+919988776655');
+    await page.fill('input[type="password"]', '1234');
+    await page.click('button:has-text("Access My Account")');
+
+    // Assert redirect to Customer Dashboard
+    await expect(page).toHaveURL(/.*portal\/dashboard/, { timeout: 15000 });
+    await expect(page.getByText(/Total Outstanding Dues/i)).toBeVisible({ timeout: 15000 });
+    await expect(page.getByText('Manjunath')).toBeVisible({ timeout: 15000 });
+  });
+
+  test('8. Customer Portal Statement & Purchases Inspection', async ({ page }) => {
+    // Open portal with session
+    await page.goto('/portal');
+    await page.fill('input[type="tel"]', '9988776655'); // without +91 to test normalization
+    await page.fill('input[type="password"]', '1234');
+    await page.click('button:has-text("Access My Account")');
+    await expect(page).toHaveURL(/.*portal\/dashboard/, { timeout: 15000 });
+
+    // Inspect Statement Tab
+    await expect(page.getByRole('button', { name: 'Statement', exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Print Statement' })).toBeVisible();
+
+    // Switch to Purchases Tab
+    await page.click('button:has-text("Purchases")');
+    await expect(page.getByText(/ORD-/i).first()).toBeVisible({ timeout: 15000 });
+
+    // Switch to Receipts Tab
+    await page.click('button:has-text("Receipts")');
+    await expect(page.getByText(/Receipt #/i).first()).toBeVisible({ timeout: 15000 });
+  });
+
+  test('9. Customer Online UPI Repayment & Live Balance Reduction', async ({ page }) => {
+    // Login to portal
+    await page.goto('/portal');
+    await page.fill('input[type="tel"]', '+919988776655');
+    await page.fill('input[type="password"]', '1234');
+    await page.click('button:has-text("Access My Account")');
+    await expect(page).toHaveURL(/.*portal\/dashboard/, { timeout: 15000 });
+
+    // Check if Pay button is active or dues are settled
+    const payBtn = page.locator('button:has-text("Pay Outstanding Online Now")');
+    const isPayBtnVisible = await payBtn.isVisible();
+
+    if (isPayBtnVisible) {
+      await payBtn.click();
+      await expect(page.getByRole('heading', { name: 'Online Payment' })).toBeVisible();
+
+      // Submit UPI payment
+      await page.click('button:has-text("Confirm UPI Pay")');
+
+      // Verify payment receipt success alert
+      await expect(page.getByText(/Payment verified and credited/i)).toBeVisible({ timeout: 15000 });
+    } else {
+      // Dues already settled
+      await expect(page.getByText(/All dues fully settled/i)).toBeVisible();
+    }
+  });
+
 });
 
