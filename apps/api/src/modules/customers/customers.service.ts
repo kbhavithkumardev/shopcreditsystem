@@ -210,6 +210,7 @@ export class CustomersService {
     }
 
     const creditLimit = dto.creditLimit ?? 0;
+    const tagsStr = dto.tags ? JSON.stringify(dto.tags) : '[]';
 
     return this.prisma.$transaction(async (tx) => {
       const customer = await tx.customer.create({
@@ -223,7 +224,7 @@ export class CustomersService {
           address: dto.address,
           creditLimit,
           notes: dto.notes,
-          tags: dto.tags || [],
+          tags: tagsStr,
         },
         include: { village: true },
       });
@@ -244,7 +245,7 @@ export class CustomersService {
             action: 'CUSTOMER_CREATED',
             entityType: 'Customer',
             entityId: customer.id,
-            newValues: { customer, creditAccount },
+            newValues: JSON.stringify({ customer, creditAccount }),
           },
         });
       }
@@ -278,7 +279,7 @@ export class CustomersService {
           fullName: dto.fullName,
           phone: dto.phone,
           creditLimit,
-          tags: ['Migrated From Paper Book'],
+          tags: JSON.stringify(['Migrated From Paper Book']),
           notes: `Opening balance migrated from: ${dto.sourceReference || 'Physical Notebook'}`,
         },
         include: { village: true },
@@ -318,11 +319,11 @@ export class CustomersService {
             action: 'PAPER_BOOK_MIGRATION',
             entityType: 'Customer',
             entityId: customer.id,
-            newValues: {
+            newValues: JSON.stringify({
               openingBalance: openingBal,
               sourceReference: dto.sourceReference,
               effectiveDate: dto.effectiveDate,
-            },
+            }),
           },
         });
       }
@@ -349,7 +350,7 @@ export class CustomersService {
           email: dto.email,
           address: dto.address,
           notes: dto.notes,
-          tags: dto.tags,
+          tags: dto.tags ? JSON.stringify(dto.tags) : undefined,
           creditLimit: dto.creditLimit !== undefined ? dto.creditLimit : undefined,
         },
         include: { village: true, creditAccount: true },
@@ -370,8 +371,8 @@ export class CustomersService {
             action: 'CUSTOMER_UPDATED',
             entityType: 'Customer',
             entityId: id,
-            oldValues: existing,
-            newValues: updated,
+            oldValues: JSON.stringify(existing),
+            newValues: JSON.stringify(updated),
           },
         });
       }

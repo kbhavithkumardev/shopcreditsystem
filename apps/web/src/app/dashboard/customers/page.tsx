@@ -78,8 +78,11 @@ function CustomersContent() {
     }
   }
 
+  const [formError, setFormError] = useState('');
+
   async function handleCreateCustomer(e: React.FormEvent) {
     e.preventDefault();
+    setFormError('');
     try {
       await apiFetch('/customers', {
         method: 'POST',
@@ -90,7 +93,7 @@ function CustomersContent() {
       setDuplicateWarning(null);
       loadCustomers();
     } catch (err: any) {
-      alert(err.message || 'Failed to create customer');
+      setFormError(err.message || 'Failed to create customer');
     }
   }
 
@@ -208,6 +211,12 @@ function CustomersContent() {
             <p className="text-xs text-slate-500 mb-4">
               Real-time duplicate detection protects against duplicate customer creation.
             </p>
+
+            {formError && (
+              <div className="mb-4 p-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs font-medium">
+                {formError}
+              </div>
+            )}
 
             {duplicateWarning && (
               <div className="mb-4 p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs flex items-start gap-2">

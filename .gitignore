@@ -6,5 +6,9 @@ build
 coverage
 *.log
 .env
+.env*
 .DS_Store
 .turbo
+test-results
+playwright-report
+blob-report

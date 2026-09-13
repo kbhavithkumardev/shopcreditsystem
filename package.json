@@ -18,6 +18,7 @@
     "dev:web": "npm run dev --workspace=@credit-shop/web"
   },
   "devDependencies": {
+    "@playwright/test": "^1.63.0",
     "typescript": "^5.4.5"
   }
 }

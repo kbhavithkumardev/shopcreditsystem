@@ -230,7 +230,11 @@ export class CollectionsService {
             action: 'COLLECTION_CYCLE_CREATED',
             entityType: 'CollectionCycle',
             entityId: cycle.id,
-            newValues: { title: dto.title, villagesCount: dto.villageIds.length, customersTargeted: entriesData.length },
+            newValues: JSON.stringify({
+              title: dto.title,
+              villagesCount: dto.villageIds.length,
+              customersTargeted: entriesData.length,
+            }),
           },
         });
       }

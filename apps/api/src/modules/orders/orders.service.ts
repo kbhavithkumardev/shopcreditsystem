@@ -231,7 +231,16 @@ export class OrdersService {
 
       // 3. Record Ledger Entry if Credit was generated
       if (calculated.creditAmount > 0) {
-        const updatedOutstanding = roundCurrency(currentOutstanding + calculated.creditAmount);
+        const existingEntries = await tx.ledgerEntry.findMany({
+          where: { customerId: customer.id },
+          select: { debitAmount: true, creditAmount: true },
+        });
+        const currentSum = existingEntries.reduce(
+          (sum, e) => sum + Number(e.debitAmount) - Number(e.creditAmount),
+          0,
+        );
+        const derivedOutstanding = roundCurrency(currentSum + calculated.creditAmount);
+        const positiveOutstanding = Math.max(0, derivedOutstanding);
 
         await tx.ledgerEntry.create({
           data: {
@@ -240,7 +249,7 @@ export class OrdersService {
             type: TransactionType.SALE_CREDIT,
             debitAmount: calculated.creditAmount,
             creditAmount: 0.00,
-            runningBalance: updatedOutstanding,
+            runningBalance: positiveOutstanding,
             description: `Credit sale for Order #${orderNumber} (Grand Total: ₹${calculated.grandTotal}, Down-Payment: ₹${calculated.immediatePaid})`,
             idempotencyKey,
             createdById: userId,
@@ -251,7 +260,7 @@ export class OrdersService {
         await tx.creditAccount.update({
           where: { customerId: customer.id },
           data: {
-            cachedOutstanding: updatedOutstanding,
+            cachedOutstanding: positiveOutstanding,
             lastTransactionAt: new Date(),
             version: { increment: 1 },
           },
@@ -267,7 +276,7 @@ export class OrdersService {
             action: 'ORDER_CREATED',
             entityType: 'Order',
             entityId: order.id,
-            newValues: JSON.parse(JSON.stringify({ order, calculated })),
+            newValues: JSON.stringify({ order, calculated }),
           },
         });
       }
@@ -293,8 +302,8 @@ export class OrdersService {
             action: `ORDER_STATUS_${dto.status}`,
             entityType: 'Order',
             entityId: id,
-            oldValues: { status: order.status },
-            newValues: { status: dto.status, reason: dto.reason },
+            oldValues: JSON.stringify({ status: order.status }),
+            newValues: JSON.stringify({ status: dto.status, reason: dto.reason }),
           },
         });
       }

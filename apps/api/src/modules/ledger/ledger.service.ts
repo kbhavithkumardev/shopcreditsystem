@@ -126,9 +126,11 @@ export class LedgerService {
           creditAmount: Number(e.creditAmount),
         })),
       );
+      const positiveDerived = Math.max(0, derivedBalance);
       const cached = Number(c.creditAccount?.cachedOutstanding || 0);
+      const isMatched = positiveDerived === cached;
 
-      if (derivedBalance === cached) {
+      if (isMatched) {
         reconciledCount++;
       } else {
         discrepancies.push({
@@ -136,8 +138,8 @@ export class LedgerService {
           customerName: c.fullName,
           phone: c.phone,
           cachedOutstanding: cached,
-          authoritativeLedgerBalance: derivedBalance,
-          discrepancy: roundCurrency(cached - derivedBalance),
+          authoritativeLedgerBalance: positiveDerived,
+          discrepancy: roundCurrency(cached - positiveDerived),
         });
       }
     }
@@ -204,14 +206,14 @@ export class LedgerService {
             action: 'LEDGER_ADJUSTMENT',
             entityType: 'LedgerEntry',
             entityId: entry.id,
-            newValues: {
+            newValues: JSON.stringify({
               adjustmentType: dto.adjustmentType,
               direction: dto.direction,
               amount: adjAmount,
               reason: dto.reason,
               previousOutstanding: currentOutstanding,
               newOutstanding,
-            },
+            }),
           },
         });
       }
@@ -282,11 +284,11 @@ export class LedgerService {
             action: 'TRANSACTION_REVERSED',
             entityType: 'LedgerEntry',
             entityId: reversalEntry.id,
-            newValues: {
+            newValues: JSON.stringify({
               reversedEntryId: original.id,
               reason: dto.reason,
               newOutstanding,
-            },
+            }),
           },
         });
       }

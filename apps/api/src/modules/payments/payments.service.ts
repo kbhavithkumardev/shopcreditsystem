@@ -263,13 +263,13 @@ export class PaymentsService {
             action: 'PAYMENT_RECORDED',
             entityType: 'Payment',
             entityId: payment.id,
-            newValues: {
+            newValues: JSON.stringify({
               receiptNumber,
               amount: paymentAmount,
               mode: dto.mode,
               plannedAllocations,
               newOutstanding: newCustOutstanding,
-            },
+            }),
           },
         });
       }
