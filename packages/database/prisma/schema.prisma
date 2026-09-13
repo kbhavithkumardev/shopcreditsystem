@@ -1,0 +1,278 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id           String      @id @default(uuid())
+  email        String?     @unique
+  phone        String      @unique
+  passwordHash String
+  fullName     String
+  role         String      @default("SHOP_MANAGER")
+  isActive     Boolean     @default(true)
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+  auditLogs    AuditLog[]
+
+  @@map("users")
+}
+
+model Village {
+  id          String     @id @default(uuid())
+  name        String     @unique
+  code        String?    @unique
+  taluk       String?
+  district    String?
+  pincode     String?
+  notes       String?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  customers   Customer[]
+  collectionCycles CollectionCycleVillage[]
+
+  @@index([name])
+  @@map("villages")
+}
+
+model Customer {
+  id               String           @id @default(uuid())
+  villageId        String
+  village          Village          @relation(fields: [villageId], references: [id])
+  customerCode     String           @unique
+  fullName         String
+  phone            String           @unique
+  alternatePhone   String?
+  email            String?
+  address          String?
+  creditLimit      Float            @default(0.00)
+  notes            String?
+  tags             String           @default("[]")
+  isActive         Boolean          @default(true)
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  creditAccount    CreditAccount?
+  orders           Order[]
+  payments         Payment[]
+  ledgerEntries    LedgerEntry[]
+  collectionEntries CollectionEntry[]
+  auditLogs        AuditLog[]
+
+  @@index([villageId])
+  @@index([phone])
+  @@index([fullName])
+  @@map("customers")
+}
+
+model CreditAccount {
+  id                  String       @id @default(uuid())
+  customerId          String       @unique
+  customer            Customer     @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  creditLimit         Float        @default(0.00)
+  cachedOutstanding   Float        @default(0.00)
+  lastTransactionAt   DateTime?
+  version             Int          @default(1)
+  createdAt           DateTime     @default(now())
+  updatedAt           DateTime     @updatedAt
+
+  @@map("credit_accounts")
+}
+
+model Product {
+  id          String      @id @default(uuid())
+  name        String
+  code        String?     @unique
+  barcode     String?     @unique
+  category    String?
+  unit        String      @default("unit")
+  unitPrice   Float
+  costPrice   Float?
+  isActive    Boolean     @default(true)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  orderItems  OrderItem[]
+
+  @@index([name])
+  @@index([barcode])
+  @@map("products")
+}
+
+model Order {
+  id                  String        @id @default(uuid())
+  orderNumber         String        @unique
+  customerId          String
+  customer            Customer      @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  orderDate           DateTime      @default(now())
+  status              String        @default("CONFIRMED")
+  subtotal            Float
+  discountTotal       Float         @default(0.00)
+  taxTotal            Float         @default(0.00)
+  otherCharges        Float         @default(0.00)
+  grandTotal          Float
+  immediatePaid       Float         @default(0.00)
+  creditAmount        Float
+  allocatedPaid       Float         @default(0.00)
+  outstandingBalance Float
+  paymentStatus       String        @default("PENDING")
+  notes               String?
+  createdById         String?
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
+
+  items               OrderItem[]
+  allocations         PaymentAllocation[]
+  ledgerEntries       LedgerEntry[]
+
+  @@index([customerId])
+  @@index([orderDate])
+  @@index([paymentStatus])
+  @@map("orders")
+}
+
+model OrderItem {
+  id          String    @id @default(uuid())
+  orderId     String
+  order       Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId   String?
+  product     Product?  @relation(fields: [productId], references: [id], onDelete: SetNull)
+  productName String
+  quantity    Float
+  unitPrice   Float
+  lineTotal   Float
+
+  @@map("order_items")
+}
+
+model Payment {
+  id              String             @id @default(uuid())
+  receiptNumber   String             @unique
+  customerId      String
+  customer        Customer           @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  amount          Float
+  paymentDate     DateTime           @default(now())
+  mode            String             @default("CASH")
+  referenceNumber String?
+  idempotencyKey  String             @unique
+  notes           String?
+  recordedById    String?
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+
+  allocations     PaymentAllocation[]
+  ledgerEntries   LedgerEntry[]
+
+  @@index([customerId])
+  @@index([paymentDate])
+  @@map("payments")
+}
+
+model PaymentAllocation {
+  id          String   @id @default(uuid())
+  paymentId   String
+  payment     Payment  @relation(fields: [paymentId], references: [id], onDelete: Restrict)
+  orderId     String
+  order       Order    @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  amount      Float
+  createdAt   DateTime @default(now())
+
+  @@unique([paymentId, orderId])
+  @@map("payment_allocations")
+}
+
+model LedgerEntry {
+  id              String          @id @default(uuid())
+  entryNumber     Int             @default(1)
+  customerId      String
+  customer        Customer        @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  orderId         String?
+  order           Order?          @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  paymentId       String?
+  payment         Payment?        @relation(fields: [paymentId], references: [id], onDelete: Restrict)
+  type            String
+  debitAmount     Float           @default(0.00)
+  creditAmount    Float           @default(0.00)
+  runningBalance  Float
+  description     String
+  referenceId     String?
+  reversalOfId    String?         @unique
+  idempotencyKey  String          @unique
+  createdById     String?
+  createdAt       DateTime        @default(now())
+
+  @@index([customerId, createdAt])
+  @@index([type])
+  @@map("ledger_entries")
+}
+
+model CollectionCycle {
+  id          String                 @id @default(uuid())
+  title       String
+  startDate   DateTime
+  endDate     DateTime
+  status      String                 @default("ACTIVE")
+  notes       String?
+  createdAt   DateTime               @default(now())
+  updatedAt   DateTime               @updatedAt
+
+  villages    CollectionCycleVillage[]
+  entries     CollectionEntry[]
+
+  @@map("collection_cycles")
+}
+
+model CollectionCycleVillage {
+  id                String          @id @default(uuid())
+  collectionCycleId String
+  collectionCycle   CollectionCycle @relation(fields: [collectionCycleId], references: [id], onDelete: Cascade)
+  villageId         String
+  village           Village         @relation(fields: [villageId], references: [id], onDelete: Restrict)
+
+  @@unique([collectionCycleId, villageId])
+  @@map("collection_cycle_villages")
+}
+
+model CollectionEntry {
+  id                  String                @id @default(uuid())
+  collectionCycleId   String
+  collectionCycle     CollectionCycle       @relation(fields: [collectionCycleId], references: [id], onDelete: Cascade)
+  customerId          String
+  customer            Customer              @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  openingOutstanding  Float
+  expectedTarget      Float
+  collectedAmount     Float                 @default(0.00)
+  remainingDue        Float
+  status              String                @default("PENDING")
+  promiseDate         DateTime?
+  notes               String?
+  updatedAt           DateTime              @updatedAt
+
+  @@unique([collectionCycleId, customerId])
+  @@index([collectionCycleId, status])
+  @@map("collection_entries")
+}
+
+model AuditLog {
+  id          String   @id @default(uuid())
+  userId      String?
+  user        User?    @relation(fields: [userId], references: [id])
+  customerId  String?
+  customer    Customer? @relation(fields: [customerId], references: [id])
+  action      String
+  entityType  String
+  entityId    String
+  oldValues   String?
+  newValues   String?
+  ipAddress   String?
+  userAgent   String?
+  requestId   String?
+  createdAt   DateTime @default(now())
+
+  @@index([entityType, entityId])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
